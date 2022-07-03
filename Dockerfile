@@ -1,4 +1,4 @@
-FROM rocker/geospatial:4.2.1-ubuntugis
+FROM rocker/binder:4.1.2
 
 ## Declares build arguments
 ARG NB_USER
