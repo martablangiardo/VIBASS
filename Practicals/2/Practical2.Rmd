@@ -46,7 +46,7 @@ library(knitr)
 library(kableExtra)
 ```
 
-# Data
+# 1. Data
 
 1. Import the`.csv` file with the data and call the data.frame object as *RESP_DATA*. 
 
@@ -84,7 +84,7 @@ The figure shows that the river Clyde partitions the study region into a norther
 We will account for this issue when creating neighbors for the areal units.
 
 
-# Spatial model
+# 2. Spatial model
 
 In order to use the same data structure for both the space-only model and later
 the space-time model, a new set of data is formed by aggregating both the
@@ -258,7 +258,16 @@ p1|p2
 
 ```
 
-# Spatio-temporal model (no interaction)
+# 3. Estimate the spatial fraction
+
+As the BYM2 has the structured (CAR) and unstructured (iid) components it might be useful to get some ideas about the strength of the spatially structured components as this would indicate the level of clustering in the data. To do so we ca simply obtain the posterior summary of the `phi` hyperparameter
+```{r eval=TRUE}
+sBYM.model$summary.hyperpar
+```
+
+This tells us that about 2/3 of the spatial variability is explained by the spatially structured component - which makes sense if we look at the map of the RR, which show a degree of spatial clustering. 
+
+# 4. Spatio-temporal model (no interaction)
 
 Now, we extend the above analysis to a separable space-time model without interactions. For the temporal component, we use the specification introduces in the lecture with a temporal unstructured random effect and a structured one (RW1 prior). 
 
@@ -392,7 +401,7 @@ ggplot() + geom_sf(data = map_RR_ST) + aes(fill = PPcat) +
 (p1|p2) / (p3|p4)
 ```
 
-# Spatio-temporal model (type I interaction)
+# 5. Spatio-temporal model (type I interaction)
 
 Now, we extend the above analysis to a separable space-time model with type I interaction: 
 

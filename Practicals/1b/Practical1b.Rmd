@@ -6,6 +6,8 @@ output:
     toc: true
     toc_float: true
 bibliography: biblio.bib
+editor_options: 
+  chunk_output_type: console
 ---
 
 \pagenumbering{gobble} 
@@ -15,11 +17,11 @@ bibliography: biblio.bib
 knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, fig.align = "center")
 ```
 
-In this practical we will carry out a disease mapping study (without spatial structure) of COVID-19 mortality in England during March-July 2020, partitioned in lower tier local authorities (LTLAs). 
+In this practical we will carry out a disease mapping study (without spatial structure) of COVID-19 mortality in England during March-July 2020, partitioned in lower tier local authorities (LTLAs) and evaluate the impact of the deprivation to explain the spatial variation. 
 
 * To start with, create a separate subdirectory to save your files created during this tutorial (e.g. setwd("~/VIBASS/Practicals/Tutorial_1b")).
 
-# Install and load packages 
+# 1. Install and load packages 
 
 This tutorial requires the following packages to be installed and attached: `dplyr`, `sf`, `spdep`, `SpatialEpi`, `RColorBrewer`, `ggplot2`, `tmap`, `cowplot`, `mapview`. 
 
@@ -60,7 +62,7 @@ library(cowplot)      # Add-on to ggplot. It provides features that help us with
 ```
 NOTE: if you have issues in working with `mapview` package in R Markdown, try to install it with `remotes::install_github("r-spatial/mapview")`.
 
-# Visualization of spatial areal data
+# 2. Visualization of spatial areal data
 
 We start by reading the shapefile of England at the LTLA level (317 areas) using the function `st_read()` of the package `sf`. Call this object as LTLA:
 ```{r eval=TRUE}
@@ -131,7 +133,7 @@ ggplot() +
 Like `ggplot2`, `tmap` is based on the idea of a *grammar of graphics* . This involves a separation between the input data and the aesthetics (that is, how data are visualised): data can be mapped in a range of different ways including location on the map (defined by data's geometry), color, and other visual functions. 
 The basic building block is `tm_shape()` (which defines input data, raster and vector objects), followed by one or more layer elements such as `tm_fill()` etc. (To start with, you may want to visit the page: https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html)
 
-```{r eval=TRUE}
+```{r LTLA_map, eval=TRUE}
 tm_shape(LTLA) +
           tm_fill("tomato") +
           tm_borders(lty="dashed", col="gold") +
@@ -173,9 +175,9 @@ mapview(LTLA)
 ```
 
 
-# Import and explore the data
+# 3. Import and explore the data
 
-The data set includes the number of COVID-19 deaths and population counts for the 628 wards of Greater London, stratified by gender and age groups. 
+The data set includes the number of COVID-19 deaths and expected counts for the 317 Local Authorities in England. In addition, it includes the value of the Index for Multiple Deprivation (IMD), which is a complex score measuring the deprivation of the area across several domains, inclusind socio-economic, crime, environment, healthcare. 
 
 1. Import the health data
 ```{r eval=TRUE, echo = FALSE}
@@ -222,13 +224,23 @@ ggplot() +
 MapSMR1
 ```
 
-+ and with `tmap` as follows (note that it takes a very long time to run):
-```{r eval=FALSE}
-tmap_mode("view")
++ and with `tmap` as follows:
+```{r SMR_map, eval=TRUE}
+tmap_mode("plot")
 tm_shape(England_SMR) + tm_polygons("SMR",palette="RdYlGn", style="cont", n=8) +
             tm_borders(lty="solid", col="black") +
             tm_style("natural") +
-            tm_layout(title="Interactive Map of SMRs at LTLA level in England")
+            tm_layout(title="Map of SMRs at LTLA level in England")
+```
+
++ We can also map the IMD as follows:
+
+```{r IMD_map, eval=TRUE}
+tmap_mode("plot")
+tm_shape(England_SMR) + tm_polygons("IMD",style="pretty", n=8, alpha=0.5) +
+            tm_borders(lty="solid", col="black") +
+            tm_style("natural") +
+            tm_layout(title="Map of IMD at LTLA level in England")
 ```
 
 A useful package that can be used when mapping spatial objects is `RColorBrewer`. Once loaded, you can see a list of all the color pallets typing `display.brewer.all()`, then pick a palette you like and plot the SMRs
@@ -251,63 +263,49 @@ ggplot() + geom_sf(data = England_SMR, aes(fill = SMR_cat), col = NA) +
 As we can see from the above code chunks, it is possible to store objects representing maps (i.e. MapSMR1) in R.
 
 
-# Obtaining the posterior relative risks (RRs)
+# 4. Obtaining the posterior relative risks for the disease mapping (RRs)
 
-The RRs will be smoothed using the Poisson-logNormal model with a spatially structured+unstructured prior on the spatial units. 
+The RRs will be smoothed using the Poisson-logNormal hierarchical model. 
 
-* We first obtain the adjacency matrix as seen in the lecture this morning:
-
-```{r spdep, echo=TRUE, include=TRUE,eval=TRUE}
-nb2INLA("LTLA.graph",poly2nb(LTLA))
-LTLA.adj <- paste(getwd(),"/LTLA.graph",sep="")
-```
-
-We then specify the model using a BYM2 prior and then run in in `INLA`  
-```{r INLA_BYM2, eval=TRUE}
+We specify the model using a `iid` prior and then run in in `INLA`  
+```{r INLA_iid, eval=TRUE}
 ID<- seq(1,317)
-formula_BYM2 <- O ~ f(ID, model="bym2", graph=LTLA.adj,
+formula_iid <- O ~ f(ID, model="iid",
                             hyper=list(prec = list(
         prior = "pc.prec",
-        param = c(0.5 / 0.31, 0.01)),
-        phi = list(
-        prior = "pc",
-        param = c(0.5, 2 / 3))))	
-mod_BYM2 <- inla(formula=formula_BYM2, family="poisson", data=England_SMR, E=E, control.compute=list(dic=TRUE, waic=TRUE))
+        param = c(0.5 / 0.31, 0.01))))	
+mod_iid <- inla(formula=formula_iid, family="poisson", data=England_SMR, E=E, control.compute=list(dic=TRUE, waic=TRUE))
 ```
 
 * To see the DIC and WAIC 
 ```{r eval=TRUE}  
-mod_BYM2$waic$waic
-mod_BYM2$dic$dic
+mod_iid$waic$waic
+mod_iid$dic$dic
 ```	
-* Compare with the model without the spatial structured component 
-```{r INLA_HET, eval=TRUE}
-formula_HET <- O ~ f(ID, model="iid", 
+
+# 5. Obtaining the posterior relative risks for the ecological regression (RRs)
+
+* Now let's add the IMD as a covariate in the model
+```{r INLA_reg, eval=TRUE}
+formula_reg <- O ~ IMD + f(ID, model="iid",
                             hyper=list(prec = list(
         prior = "pc.prec",
-        param = c(0.5 / 0.31, 0.01))))
-mod_HET <- inla(formula=formula_HET, family="poisson", data=England_SMR, E=E, control.compute=list(dic=TRUE, waic=TRUE))
-mod_HET$waic$waic
-mod_HET$dic$dic
+        param = c(0.5 / 0.31, 0.01))))	
+mod_reg <- inla(formula=formula_reg, family="poisson", data=England_SMR, E=E, control.compute=list(dic=TRUE, waic=TRUE))
+mod_reg$waic$waic
+mod_reg$dic$dic
 ```
-We can conclude that the model with the spatial structured and unstructured component has a better fit so we will focus on that in the maps#
+We can conclude that the two models are very similar in terms of fitting, so we will focus on the simpler hierarchical model in the maps.
 
-# Estimate the spatial fraction
 
-As the BYM2 has the structured (CAR) and unstructured (iid) components it might be useful to get some ideas about the strength of the spatially structured components as this would indicate the level of clustering in the data. To do so we ca simply obtain the posterior summary of the `phi` hyperparameter
-```{r eval=TRUE}
-mod_BYM2$summary.hyperpar
-```
-This tells us that almost all of the spatial variability is ecplained by the spatially structured component - strong spatial clustering. 
-
-# Map of the smoothed RRs
+# 6. Map of the smoothed RRs
 
 * To map the smoothed RRs in R we extract the posterior mean of the relative risks. Note that we take the mean on the transformed marginals to get the log-RR back to the original scale:
 ```{r eval=TRUE} 
 RR_COVID<-c()
 for(i in 1:317){
   RR_COVID[i] <- inla.emarginal(function(x) exp(x), 
-        mod_BYM2$marginals.random$ID[[i]])
+        mod_iid$marginals.random$ID[[i]])
 }
 
 ```	

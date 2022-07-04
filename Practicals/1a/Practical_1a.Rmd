@@ -1,5 +1,5 @@
 ---
-title: "Tutorial 1a - INLA basics"
+title: "Practical 1a - INLA basics"
 author: "Spatial and Spatio-Temporal Bayesian Models with `R-INLA`"
 output: 
   html_document:
@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, fig.align = "ce
 
 In this practical we will use simulated data to get familiar with the basic `R-INLA` functions. Moreover, we will see how to change the prior distributions.
 
-# Data simulation
+# 1. Data simulation
 The data are simulated from the following model
 \[
 y_i \sim \text{Normal}(\eta_i, \sigma=0.1) \qquad i=1,\ldots,n=100
@@ -43,7 +43,7 @@ y = rnorm(n,eta,sigma)
 my.data = data.frame(y=y,x=x)
 ```
 
-# Model estimation and output exploration
+# 2. Model estimation and output exploration
 We use `R-INLA` to estimate the parameters of the given model where $\boldsymbol \theta=\{\beta_0,\beta_1\}$ and $\boldsymbol\psi=\{1/\sigma^2\}$. In particular:
 
 1. we load the `R-INLA` library and define the `formula` (it includes only fixed effects)
@@ -121,8 +121,8 @@ Finally we can obtain some summary statistics about the distribution using the `
 inla.zmarginal(post.sigma)
 ```
 
-# Change the priors 
-## Fixed effects
+# 3. Change the priors 
+## 3.1 Fixed effects
 The default prior adopted by `R-INLA` for the regression parameters $\beta_0$ and $\beta_1$ is the vague distribution $\text{Normal}(0,10^6)$ (see also Section 5.1 and 5.1.2 of the INLA book). The option `control.fixed` of the `inla` function can be used for changing these priors. For example if we want to specifiy $\beta_0\sim\text{Normal}(0,10^4)$ and $\beta_1\sim\text{Normal}(0,1)$ we will use the following code:
 
 ```{r eval=TRUE}
@@ -154,7 +154,7 @@ legend("topleft",col=c(1,2),lty=c(1,1),
 
 We do not detect any difference in the posterior distribiutions.
 
-## Outcome precision $(1/\sigma^2)$
+## 3.2 Outcome precision $(1/\sigma^2)$
 
 The default prior adopted by `R-INLA` for the response precision $\tau=1/\sigma^2$ is a noninformative logGamma prior defined on the logarithm of the precision (internal scale). the default prior distribution is 
 \[
