@@ -1,4 +1,4 @@
-# Summer School "Bayesian methods in health economics" 
+# VIBASS  "Spatial and Spatio-Temporal Bayesian Models with R-INLA" 
 ## Rstudio environment
 
 This repository contains the set up to create a Rstudio environment with all the relevant packages installed.
